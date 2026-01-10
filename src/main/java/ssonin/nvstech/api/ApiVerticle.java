@@ -119,10 +119,9 @@ public final class ApiVerticle extends VerticleBase {
   }
 
   private void createDocument(RoutingContext ctx) {
-    fetchClient(ctx)
-      .compose(client ->
-        validatePayload(ctx, documentValidator)
-          .map(payload -> payload.put("client_id", client.body().getString("id"))))
+    validatePayload(ctx, documentValidator)
+      .compose(payload -> uuidPathParam(ctx, "clientId")
+        .map(clientId -> payload.put("client_id", clientId.toString())))
       .compose(payload ->
         vertx.eventBus().<JsonObject>request("documents.create", payload))
       .onSuccess(reply ->
@@ -152,7 +151,7 @@ public final class ApiVerticle extends VerticleBase {
   }
 
   private Future<Message<JsonObject>> fetchClient(RoutingContext ctx) {
-    return uuidPathParam(ctx)
+    return uuidPathParam(ctx, "clientId")
       .compose(clientId -> {
         final var payload = new JsonObject().put("clientId", clientId.toString());
         return vertx.eventBus()
@@ -160,8 +159,8 @@ public final class ApiVerticle extends VerticleBase {
       });
   }
 
-  private Future<UUID> uuidPathParam(RoutingContext ctx) {
-    final var clientId = ctx.pathParam("clientId");
+  private Future<UUID> uuidPathParam(RoutingContext ctx, String paramName) {
+    final var clientId = ctx.pathParam(paramName);
     try {
       return succeededFuture(UUID.fromString(clientId));
     } catch (IllegalArgumentException e) {

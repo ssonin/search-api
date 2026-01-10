@@ -18,6 +18,15 @@ interface SqlQueries {
       """;
   }
 
+  static String selectClientForUpdate() {
+    return """
+      SELECT 1
+      FROM clients
+      WHERE id = $1
+      FOR UPDATE;
+      """;
+  }
+
   static String insertDocument() {
     return """
       INSERT INTO documents (id, client_id, title, content, embedding)
