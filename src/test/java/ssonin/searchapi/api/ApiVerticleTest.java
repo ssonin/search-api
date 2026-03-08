@@ -389,8 +389,8 @@ class ApiVerticleTest {
 
   @Test
   @Order(41)
-  @DisplayName("POST /clients/:id/documents: returns 500 when embedding service unavailable")
-  void returns_500_when_embedding_fails_on_document_create(VertxTestContext ctx) {
+  @DisplayName("POST /clients/:id/documents: succeeds even when embedding service unavailable")
+  void succeeds_when_embedding_service_down_on_document_create(VertxTestContext ctx) {
     stubFor(post(urlEqualTo(EMBEDDINGS_ENDPOINT))
       .willReturn(serverError()));
 
@@ -402,7 +402,7 @@ class ApiVerticleTest {
       .putHeader("Content-Type", "application/json")
       .sendJsonObject(documentData)
       .onComplete(ctx.succeeding(response -> ctx.verify(() -> {
-        assertThat(response.statusCode()).isEqualTo(500);
+        assertThat(response.statusCode()).isEqualTo(201);
         ctx.completeNow();
       })));
   }

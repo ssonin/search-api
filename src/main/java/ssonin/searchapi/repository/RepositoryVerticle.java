@@ -90,18 +90,14 @@ public final class RepositoryVerticle extends VerticleBase {
             if (!res.iterator().hasNext()) {
               throw new ClientNotFoundException();
             }
-            return fetchEmbeddings(data.getString("content"))
-              .compose(embeddings -> {
-                final var values = Tuple.of(
-                  randomUUID(),
-                  data.getString("client_id"),
-                  data.getString("title"),
-                  data.getString("content"),
-                  embeddings.getJsonArray(0).toString());
-                return conn.preparedQuery(insertDocument())
-                  .execute(values)
-                  .map(rows -> documentFromRow(rows.iterator().next()));
-              });
+            final var values = Tuple.of(
+              randomUUID(),
+              data.getString("client_id"),
+              data.getString("title"),
+              data.getString("content"));
+            return conn.preparedQuery(insertDocument())
+              .execute(values)
+              .map(rows -> documentFromRow(rows.iterator().next()));
           }))
       .onSuccess(msg::reply)
       .onFailure(handleError(msg));

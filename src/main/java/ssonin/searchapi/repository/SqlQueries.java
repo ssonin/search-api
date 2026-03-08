@@ -29,8 +29,8 @@ interface SqlQueries {
 
   static String insertDocument() {
     return """
-      INSERT INTO documents (id, client_id, title, content, embedding)
-      VALUES ($1, $2, $3, $4, $5::vector)
+      INSERT INTO documents (id, client_id, title, content)
+      VALUES ($1, $2, $3, $4)
       RETURNING id, created_at, client_id, title, content;
       """;
   }
