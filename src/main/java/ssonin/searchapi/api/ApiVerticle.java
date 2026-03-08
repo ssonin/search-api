@@ -1,4 +1,4 @@
-package ssonin.nvstech.api;
+package ssonin.searchapi.api;
 
 import io.vertx.core.Future;
 import io.vertx.core.VerticleBase;
@@ -70,7 +70,7 @@ public final class ApiVerticle extends VerticleBase {
   private void initialiseValidators() {
     final var schemaOptions = new JsonSchemaOptions()
       .setDraft(Draft.DRAFT202012)
-      .setBaseUri("https://nvs-tech.local/schemas");
+      .setBaseUri("https://search-api.local/schemas");
 
     final var clientSchemaJson = objectSchema()
       .requiredProperty("first_name", stringSchema().with(minLength(1)))

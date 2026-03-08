@@ -25,7 +25,7 @@ val testcontainersVersion = "1.21.4"
 val vertxVersion = "5.0.6"
 val wiremockVersion = "3.13.1"
 
-val mainVerticleName = "ssonin.nvstech.App"
+val mainVerticleName = "ssonin.searchapi.App"
 val launcherClassName = "io.vertx.launcher.application.VertxApplication"
 
 application {

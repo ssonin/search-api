@@ -1,4 +1,4 @@
-package ssonin.nvstech.repository;
+package ssonin.searchapi.repository;
 
 final class ClientNotFoundException extends NotFoundException {
 

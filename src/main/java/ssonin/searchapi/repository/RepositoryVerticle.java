@@ -1,4 +1,4 @@
-package ssonin.nvstech.repository;
+package ssonin.searchapi.repository;
 
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -22,7 +22,7 @@ import static io.vertx.core.Future.succeededFuture;
 import static java.util.Comparator.comparingDouble;
 import static java.util.UUID.randomUUID;
 import static org.slf4j.LoggerFactory.getLogger;
-import static ssonin.nvstech.repository.SqlQueries.*;
+import static ssonin.searchapi.repository.SqlQueries.*;
 
 public final class RepositoryVerticle extends VerticleBase {
 

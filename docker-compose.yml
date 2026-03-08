@@ -1,23 +1,23 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: nvs-tech-postgres
+    container_name: search-api-postgres
     restart: unless-stopped
 
     environment:
-      PGDATABASE: ${PGDATABASE:-nvs_tech}
-      PGUSER: ${PGUSER:-nvs_tech}
-      PGPASSWORD: ${PGPASSWORD:-nvs_tech}
+      PGDATABASE: ${PGDATABASE:-search_api}
+      PGUSER: ${PGUSER:-search_api}
+      PGPASSWORD: ${PGPASSWORD:-search_api}
 
-      POSTGRES_DB: ${PGDATABASE:-nvs_tech}
-      POSTGRES_USER: ${PGUSER:-nvs_tech}
-      POSTGRES_PASSWORD: ${PGPASSWORD:-nvs_tech}
+      POSTGRES_DB: ${PGDATABASE:-search_api}
+      POSTGRES_USER: ${PGUSER:-search_api}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-search_api}
 
     ports:
       - "127.0.0.1:5432:5432"
 
     volumes:
-      - nvs_tech_postgres_data:/var/lib/postgresql/data
+      - search_api_postgres_data:/var/lib/postgresql/data
 
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${PGUSER} -d $${PGDATABASE}"]
@@ -26,13 +26,13 @@ services:
       retries: 5
 
     networks:
-      - nvs-tech-network
+      - search-api-network
 
   embedding:
     build:
       context: ./services/embedding-service
       dockerfile: embedding.Dockerfile
-    container_name: nvs-tech-embedding
+    container_name: search-api-embedding
     restart: unless-stopped
 
     ports:
@@ -45,13 +45,13 @@ services:
       retries: 5
 
     networks:
-      - nvs-tech-network
+      - search-api-network
 
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: nvs-tech-app
+    container_name: search-api-app
 
     environment:
       EMBEDDING_SERVICE_HOST: embedding
@@ -59,9 +59,9 @@ services:
       HTTP_PORT: ${HTTP_PORT:-8888}
       PGHOST: postgres
       PGPORT: 5432
-      PGDATABASE: ${PGDATABASE:-nvs_tech}
-      PGUSER: ${PGUSER:-nvs_tech}
-      PGPASSWORD: ${PGPASSWORD:-nvs_tech}
+      PGDATABASE: ${PGDATABASE:-search_api}
+      PGUSER: ${PGUSER:-search_api}
+      PGPASSWORD: ${PGPASSWORD:-search_api}
 
     ports:
       - "127.0.0.1:8888:8888"
@@ -71,11 +71,11 @@ services:
         condition: service_healthy
 
     networks:
-      - nvs-tech-network
+      - search-api-network
 
 volumes:
-  nvs_tech_postgres_data:
+  search_api_postgres_data:
 
 networks:
-  nvs-tech-network:
+  search-api-network:
     driver: bridge

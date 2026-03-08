@@ -1,4 +1,4 @@
-package ssonin.nvstech.api;
+package ssonin.searchapi.api;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
@@ -19,8 +19,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-import ssonin.nvstech.repository.EmbeddingVerticle;
-import ssonin.nvstech.repository.RepositoryVerticle;
+import ssonin.searchapi.repository.EmbeddingVerticle;
+import ssonin.searchapi.repository.RepositoryVerticle;
 
 import java.util.UUID;
 
@@ -41,7 +41,7 @@ class ApiVerticleTest {
   @Container
   private static final PostgreSQLContainer<?> postgres =
     new PostgreSQLContainer<>(DockerImageName.parse("pgvector/pgvector:pg16"))
-      .withDatabaseName("nvs_tech_test")
+      .withDatabaseName("search_api_test")
       .withUsername("test_user")
       .withPassword("test_password");
 

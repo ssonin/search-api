@@ -1,4 +1,4 @@
-package ssonin.nvstech;
+package ssonin.searchapi;
 
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
@@ -7,9 +7,9 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
-import ssonin.nvstech.api.ApiVerticle;
-import ssonin.nvstech.repository.EmbeddingVerticle;
-import ssonin.nvstech.repository.RepositoryVerticle;
+import ssonin.searchapi.api.ApiVerticle;
+import ssonin.searchapi.repository.EmbeddingVerticle;
+import ssonin.searchapi.repository.RepositoryVerticle;
 
 import java.util.Optional;
 

@@ -1,4 +1,4 @@
-package ssonin.nvstech.repository;
+package ssonin.searchapi.repository;
 
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
@@ -30,7 +30,7 @@ class RepositoryVerticleTest {
   @Container
   private static final PostgreSQLContainer<?> postgres =
     new PostgreSQLContainer<>(DockerImageName.parse("pgvector/pgvector:pg16"))
-      .withDatabaseName("nvs_tech_test")
+      .withDatabaseName("search_api_test")
       .withUsername("test_user")
       .withPassword("test_password");
 

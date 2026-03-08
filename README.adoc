@@ -1,4 +1,4 @@
-= NVS Tech Search API
+= Search API
 :toc:
 :toc-placement!:
 
@@ -62,7 +62,7 @@ This makes it ideal for I/O-intensive applications like search APIs where databa
 [source,bash]
 ----
 git clone <repository-url>
-cd nvs-tech
+cd search-api
 ----
 
 2. Start the application:
@@ -125,15 +125,15 @@ Environment variables (with defaults):
 |PostgreSQL port
 
 |`PGDATABASE`
-|`nvs_tech`
+|`search_api`
 |Database name
 
 |`PGUSER`
-|`nvs_tech`
+|`search_api`
 |Database user
 
 |`PGPASSWORD`
-|`nvs_tech`
+|`search_api`
 |Database password
 
 |`HTTP_PORT`
@@ -356,7 +356,7 @@ curl "http://localhost:8888/api/v1/clients/${CLIENT_ID}"
 
 == Testing with Postman
 
-A Postman collection with example requests is available at link:src/test/resources/postman/nvs-tech.postman_collection.json[nvs-tech.postman_collection.json].
+A Postman collection with example requests is available at link:src/test/resources/postman/search-api.postman_collection.json[search_api.postman_collection.json].
 
 To use:
 
@@ -669,7 +669,7 @@ Integration tests use Testcontainers to spin up a PostgreSQL instance automatica
 ./gradlew clean shadowJar
 ----
 
-The fat JAR will be available at `build/libs/nvs-tech-1.0.0-SNAPSHOT-fat.jar`.
+The fat JAR will be available at `build/libs/search-api-1.0.0-SNAPSHOT-fat.jar`.
 
 == Known Limitations & Future Enhancements
 
@@ -724,20 +724,20 @@ curl http://localhost:8000/health
 Verify data exists:
 [source,bash]
 ----
-docker exec -it nvs-tech-postgres psql -U nvs_tech -d nvs_tech -c "SELECT COUNT(*) FROM clients;"
-docker exec -it nvs-tech-postgres psql -U nvs_tech -d nvs_tech -c "SELECT COUNT(*) FROM documents;"
+docker exec -it search-api-postgres psql -U search_api -d search_api -c "SELECT COUNT(*) FROM clients;"
+docker exec -it search-api-postgres psql -U search_api -d search_api -c "SELECT COUNT(*) FROM documents;"
 ----
 
 Check search vector generation:
 [source,bash]
 ----
-docker exec -it nvs-tech-postgres psql -U nvs_tech -d nvs_tech -c "SELECT id, search FROM clients LIMIT 1;"
+docker exec -it search-api-postgres psql -U search_api -d search_api -c "SELECT id, search FROM clients LIMIT 1;"
 ----
 
 Verify embeddings are stored:
 [source,bash]
 ----
-docker exec -it nvs-tech-postgres psql -U nvs_tech -d nvs_tech -c "SELECT id, embedding IS NOT NULL as has_embedding FROM documents LIMIT 5;"
+docker exec -it search-api-postgres psql -U search_api -d search_api -c "SELECT id, embedding IS NOT NULL as has_embedding FROM documents LIMIT 5;"
 ----
 
 === Embedding service issues

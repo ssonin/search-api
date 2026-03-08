@@ -1,4 +1,4 @@
-package ssonin.nvstech.repository;
+package ssonin.searchapi.repository;
 
 import io.vertx.core.Future;
 import io.vertx.core.VerticleBase;

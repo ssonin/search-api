@@ -1,4 +1,4 @@
-package ssonin.nvstech;
+package ssonin.searchapi;
 
 import io.vertx.core.Vertx;
 import io.vertx.ext.web.client.WebClient;
@@ -29,7 +29,7 @@ class AppTest {
   @Container
   private static final PostgreSQLContainer<?> postgres =
     new PostgreSQLContainer<>(DockerImageName.parse("pgvector/pgvector:pg16"))
-      .withDatabaseName("nvs_tech_test")
+      .withDatabaseName("search_api_test")
       .withUsername("test_user")
       .withPassword("test_password");
 

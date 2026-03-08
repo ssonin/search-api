@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "53d3a111-e73c-4725-991c-0735f6608156",
-		"name": "nvs-tech",
+		"name": "search-api",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "3791104"
 	},
