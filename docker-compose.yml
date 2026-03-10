@@ -4,6 +4,13 @@ services:
     container_name: search-api-postgres
     restart: unless-stopped
 
+    # wal_level=logical is required for pg_logical_emit_message() to be captured
+    # by Debezium via the pgoutput logical decoding plugin.
+    command: ["postgres",
+      "-c", "wal_level=logical",
+      "-c", "max_replication_slots=10",
+      "-c", "max_wal_senders=10"]
+
     environment:
       PGDATABASE: ${PGDATABASE:-search_api}
       PGUSER: ${PGUSER:-search_api}
@@ -18,6 +25,7 @@ services:
 
     volumes:
       - search_api_postgres_data:/var/lib/postgresql/data
+      - ./services/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
 
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${PGUSER} -d $${PGDATABASE}"]
@@ -47,6 +55,85 @@ services:
     networks:
       - search-api-network
 
+  kafka:
+    image: apache/kafka:latest
+    container_name: search-api-kafka
+    restart: unless-stopped
+
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+    ports:
+      - "127.0.0.1:9092:9092"
+
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - search-api-network
+
+  debezium:
+    image: debezium/connect:2.7.3.Final
+    container_name: search-api-debezium
+    restart: unless-stopped
+
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: debezium
+      CONFIG_STORAGE_TOPIC: debezium.configs
+      OFFSET_STORAGE_TOPIC: debezium.offsets
+      STATUS_STORAGE_TOPIC: debezium.status
+
+    ports:
+      - "127.0.0.1:8083:8083"
+
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - search-api-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: search-api-kafka-ui
+    restart: unless-stopped
+
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+    networks:
+      - search-api-network
+
   app:
     build:
       context: .
@@ -62,12 +149,15 @@ services:
       PGDATABASE: ${PGDATABASE:-search_api}
       PGUSER: ${PGUSER:-search_api}
       PGPASSWORD: ${PGPASSWORD:-search_api}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
     ports:
       - "127.0.0.1:8888:8888"
 
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
 
     networks:
