@@ -1,0 +1,16 @@
+{
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+  "database.hostname": "postgres",
+  "database.port": "5432",
+  "database.user": "search_api",
+  "database.password": "search_api",
+  "database.dbname": "search_api",
+  "topic.prefix": "searchapi",
+  "plugin.name": "pgoutput",
+  "publication.name": "dbz_publication",
+  "slot.name": "debezium_slot",
+  "logical.decoding.message.prefix.include.list": "document.created",
+  "publication.autocreate.mode": "disabled",
+  "snapshot.mode": "no_data",
+  "heartbeat.interval.ms": "5000"
+}

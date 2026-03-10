@@ -115,6 +115,28 @@ services:
     networks:
       - search-api-network
 
+  debezium-init:
+    image: alpine/curl:latest
+    container_name: search-api-debezium-init
+    restart: on-failure
+
+    volumes:
+      - ./services/debezium/connector-config.json:/connector-config.json:ro
+
+    # Register connector idempotently
+    command: >
+      curl -sf -X PUT http://debezium:8083/connectors/searchapi-postgres/config
+      -H "Content-Type: application/json"
+      -d @/connector-config.json
+      --retry 10 --retry-connrefused --retry-delay 3
+
+    depends_on:
+      debezium:
+        condition: service_healthy
+
+    networks:
+      - search-api-network
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: search-api-kafka-ui
