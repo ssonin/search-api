@@ -35,6 +35,14 @@ interface SqlQueries {
       """;
   }
 
+  static String emitDocumentCreatedWalMessage() {
+    return "SELECT pg_logical_emit_message(true, 'document.created', convert_to($1, 'UTF8'))";
+  }
+
+  static String updateDocumentEmbedding() {
+    return "UPDATE documents SET embedding = $1::vector WHERE id = $2::uuid";
+  }
+
   static String searchClients() {
     return """
       SELECT

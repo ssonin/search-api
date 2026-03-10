@@ -97,7 +97,11 @@ public final class RepositoryVerticle extends VerticleBase {
               data.getString("content"));
             return conn.preparedQuery(insertDocument())
               .execute(values)
-              .map(rows -> documentFromRow(rows.iterator().next()));
+              .map(rows -> documentFromRow(rows.iterator().next()))
+              .compose(doc ->
+                conn.preparedQuery(emitDocumentCreatedWalMessage())
+                  .execute(Tuple.of(doc.getString("id")))
+                  .map(ignored -> doc));
           }))
       .onSuccess(msg::reply)
       .onFailure(handleError(msg));
