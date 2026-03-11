@@ -43,8 +43,22 @@ services:
     container_name: search-api-embedding
     restart: unless-stopped
 
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${PGDATABASE:-search_api}
+      PGUSER: ${PGUSER:-search_api}
+      PGPASSWORD: ${PGPASSWORD:-search_api}
+
     ports:
       - "127.0.0.1:8000:8000"
+
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
