@@ -19,7 +19,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-import ssonin.searchapi.repository.EmbeddingVerticle;
+import ssonin.searchapi.embedding.EmbeddingVerticle;
 import ssonin.searchapi.repository.RepositoryVerticle;
 
 import java.util.UUID;

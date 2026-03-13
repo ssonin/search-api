@@ -1,4 +1,4 @@
-package ssonin.searchapi.repository;
+package ssonin.searchapi.embedding;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;

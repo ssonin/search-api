@@ -139,9 +139,14 @@ public final class ApiVerticle extends VerticleBase {
       ctx.response().setStatusCode(400).end("Required query parameter is missing");
       return;
     }
-    final var payload = new JsonObject().put("query", queryParam.toLowerCase());
     vertx.eventBus()
-      .<JsonArray>request("search", payload)
+      .<JsonArray>request("embeddings.get", new JsonObject().put("texts", JsonArray.of(queryParam)))
+      .map(Message::body)
+      .map(embeddings -> new JsonObject()
+        .put("query", queryParam)
+        .put("embeddings", embeddings))
+      .compose(it -> vertx.eventBus()
+        .<JsonArray>request("search", it))
       .onSuccess(reply ->
         ctx.response()
           .setStatusCode(200)

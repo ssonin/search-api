@@ -110,10 +110,10 @@ public final class RepositoryVerticle extends VerticleBase {
   private void search(Message<JsonObject> msg) {
     final Comparator<JsonObject> byRank = comparingDouble(it -> it.getDouble("rank"));
     final var query = msg.body().getString("query");
-    fetchEmbeddings(query)
-      .compose(embeddings -> Future.all(
+    final var embeddings = msg.body().getJsonArray("embeddings");
+    Future.all(
         searchClients(query),
-        searchDocuments(query, embeddings)))
+        searchDocuments(query, embeddings))
       .map(composite -> {
         final JsonArray clients = composite.resultAt(0);
         final JsonArray documents = composite.resultAt(1);
@@ -155,14 +155,6 @@ public final class RepositoryVerticle extends VerticleBase {
             }
             return result;
           }));
-  }
-
-  private Future<JsonArray> fetchEmbeddings(String... texts) {
-    final var message = new JsonObject()
-      .put("texts", JsonArray.of(texts));
-    return vertx.eventBus()
-      .<JsonArray>request("embeddings.get", message)
-      .map(Message::body);
   }
 
   private JsonObject clientFromRow(Row row) {

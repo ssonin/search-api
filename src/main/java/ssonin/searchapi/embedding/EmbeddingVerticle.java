@@ -1,4 +1,4 @@
-package ssonin.searchapi.repository;
+package ssonin.searchapi.embedding;
 
 import io.vertx.core.Future;
 import io.vertx.core.VerticleBase;
@@ -24,7 +24,7 @@ public final class EmbeddingVerticle extends VerticleBase {
     final var embeddingConfig = config()
       .getJsonObject("services")
       .getJsonObject("embedding");
-    host =  embeddingConfig.getString("host");
+    host = embeddingConfig.getString("host");
     port = embeddingConfig.getInteger("port");
 
     webClient = WebClient.create(vertx);

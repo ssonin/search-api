@@ -8,7 +8,7 @@ import io.vertx.pgclient.PgConnectOptions;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
 import ssonin.searchapi.api.ApiVerticle;
-import ssonin.searchapi.repository.EmbeddingVerticle;
+import ssonin.searchapi.embedding.EmbeddingVerticle;
 import ssonin.searchapi.repository.RepositoryVerticle;
 
 import java.util.Optional;
