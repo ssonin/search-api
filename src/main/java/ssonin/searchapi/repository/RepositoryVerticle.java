@@ -43,6 +43,7 @@ public final class RepositoryVerticle extends VerticleBase {
     eb.consumer("clients.create", this::createClient);
     eb.consumer("clients.get", this::getClient);
     eb.consumer("documents.create", this::createDocument);
+    eb.consumer("documents.embedding.update", this::updateDocumentEmbedding);
     eb.consumer("search", this::search);
     return succeededFuture();
   }
@@ -85,14 +86,14 @@ public final class RepositoryVerticle extends VerticleBase {
     final var data = msg.body();
     pool.withTransaction(conn ->
         conn.preparedQuery(selectClientForUpdate())
-          .execute(Tuple.of(data.getString("client_id")))
+          .execute(Tuple.of(data.getString("clientId")))
           .compose(res -> {
             if (!res.iterator().hasNext()) {
               throw new ClientNotFoundException();
             }
             final var values = Tuple.of(
               randomUUID(),
-              data.getString("client_id"),
+              data.getString("clientId"),
               data.getString("title"),
               data.getString("content"));
             return conn.preparedQuery(insertDocument())
@@ -104,6 +105,15 @@ public final class RepositoryVerticle extends VerticleBase {
                   .map(ignored -> doc));
           }))
       .onSuccess(msg::reply)
+      .onFailure(handleError(msg));
+  }
+
+  private void updateDocumentEmbedding(Message<JsonObject> msg) {
+    final var data = msg.body();
+    pool.withConnection(conn ->
+      conn.preparedQuery(SqlQueries.updateDocumentEmbedding())
+        .execute(Tuple.of(data.getString("documentId"), data.getJsonArray("embedding").encode())))
+      .onSuccess(ignored -> msg.reply(new JsonObject()))
       .onFailure(handleError(msg));
   }
 

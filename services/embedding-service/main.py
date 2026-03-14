@@ -62,7 +62,7 @@ async def embedding_consumer():
           logger.warning("Document %s not found, skipping", doc_id)
           continue
         [embedding] = model.encode([content]).tolist()
-        await producer.send(OUTPUT_TOPIC, {"document_id": doc_id, "embedding": embedding})
+        await producer.send(OUTPUT_TOPIC, {"documentId": doc_id, "embedding": embedding})
         logger.info("Published embedding for document %s", doc_id)
       except Exception:
         logger.exception("Failed to process message, skipping")

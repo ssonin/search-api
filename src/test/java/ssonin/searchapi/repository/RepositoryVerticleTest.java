@@ -8,7 +8,13 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -155,7 +161,7 @@ class RepositoryVerticleTest {
   @DisplayName("createDocument: must create a new document successfully")
   void creates_document(Vertx vertx, VertxTestContext ctx) {
     var documentData = new JsonObject()
-      .put("client_id", createdClientId)
+      .put("clientId", createdClientId)
       .put("title", "Chandler Bing's Utility Bill of Awkwardness")
       .put("content", "This official-looking utility bill details the excessive energy I've wasted " +
         "trying to explain my job to my parents and the high emotional charges from every failed " +
@@ -164,6 +170,14 @@ class RepositoryVerticleTest {
         "Could this BE any more expensive?");
 
     vertx.eventBus().<JsonObject>request("documents.create", documentData)
+      .compose(reply -> {
+        var doc = reply.body();
+        return vertx.eventBus()
+          .<JsonObject>request("documents.embedding.update", new JsonObject()
+            .put("documentId", doc.getString("id"))
+            .put("embedding", generateDeterministicEmbedding(documentData.getString("content"))))
+          .map(ignored -> reply);
+      })
       .onComplete(ctx.succeeding(reply -> ctx.verify(() -> {
         var document = reply.body();
 
@@ -207,7 +221,6 @@ class RepositoryVerticleTest {
   }
 
   @Test
-  @Disabled("Synonym match relied on vector search; documents have no embeddings until async embedding backfill is implemented")
   @Order(7)
   @DisplayName("search: Synonym Match (Thesaurus) - 'address proof' must return document with 'utility bill'")
   void searches_by_synonym_match(Vertx vertx, VertxTestContext ctx) {
@@ -352,12 +365,20 @@ class RepositoryVerticleTest {
   @DisplayName("createDocument: must create document used for semantic search")
   void creates_document_and_stores_embedding(Vertx vertx, VertxTestContext ctx) {
     var documentData = new JsonObject()
-      .put("client_id", createdClientId)
+      .put("clientId", createdClientId)
       .put("title", "Investment Portfolio Analysis")
       .put("content", "A comprehensive review of wealth management strategies " +
         "including portfolio diversification and risk assessment.");
 
     vertx.eventBus().<JsonObject>request("documents.create", documentData)
+      .compose(reply -> {
+        var doc = reply.body();
+        return vertx.eventBus()
+          .<JsonObject>request("documents.embedding.update", new JsonObject()
+            .put("documentId", doc.getString("id"))
+            .put("embedding", generateDeterministicEmbedding(documentData.getString("content"))))
+          .map(ignored -> reply);
+      })
       .onComplete(ctx.succeeding(reply -> ctx.verify(() -> {
         var document = reply.body();
 
@@ -390,7 +411,6 @@ class RepositoryVerticleTest {
   }
 
   @Test
-  @Disabled("Requires embeddings on documents; will pass once async embedding backfill is implemented")
   @Order(16)
   @DisplayName("search: Semantic Match - 'financial planning' must find documents via embedding similarity")
   void searches_for_semantic_match_for_financial_planning(Vertx vertx, VertxTestContext ctx) {
@@ -416,7 +436,7 @@ class RepositoryVerticleTest {
   @DisplayName("search: Hybrid ranking - exact FTS match should rank higher than vector-only match")
   void ranks_fts_results_higher(Vertx vertx, VertxTestContext ctx) {
     var documentData = new JsonObject()
-      .put("client_id", createdClientId)
+      .put("clientId", createdClientId)
       .put("title", "Retirement Planning Guide")
       .put("content", "This retirement guide covers pension options, 401k strategies, " +
         "and social security benefits for long-term financial security.");
@@ -448,7 +468,7 @@ class RepositoryVerticleTest {
   @DisplayName("search: Vector search should find documents when FTS has no match")
   void returns_only_vector_search_results_when_no_fts_match(Vertx vertx, VertxTestContext ctx) {
     var documentData = new JsonObject()
-      .put("client_id", createdClientId)
+      .put("clientId", createdClientId)
       .put("title", "Asset Allocation Strategy")
       .put("content", "Diversifying investments across stocks, bonds, and real estate " +
         "to optimize returns while managing portfolio risk exposure.");
@@ -494,7 +514,7 @@ class RepositoryVerticleTest {
   @DisplayName("createDocument: must fail gracefully when embeddings service is unavailable")
   void fails_to_create_document_if_embedding_service_call_fails(Vertx vertx, VertxTestContext ctx) {
     var documentData = new JsonObject()
-      .put("client_id", createdClientId)
+      .put("clientId", createdClientId)
       .put("title", "Test Document")
       .put("content", "");
 
@@ -538,7 +558,8 @@ class RepositoryVerticleTest {
       embedding.add(random.nextDouble() * 2 - 1);
     }
 
-    if (lowerText.contains("financial") || lowerText.contains("money") || lowerText.contains("bill")) {
+    if (lowerText.contains("financial") || lowerText.contains("money") || lowerText.contains("bill")
+      || lowerText.contains("utility") || lowerText.contains("address")) {
       boostDimension(embedding, 0, 0.8);
       boostDimension(embedding, 1, 0.7);
     }

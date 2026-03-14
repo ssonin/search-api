@@ -49,7 +49,8 @@ class AppTest {
       .set("PGPASSWORD", postgres.getPassword())
       .set("HTTP_PORT", String.valueOf(TEST_HTTP_PORT))
       .set("EMBEDDING_SERVICE_HOST", "localhost")
-      .set("EMBEDDING_SERVICE_PORT", "8080");
+      .set("EMBEDDING_SERVICE_PORT", "8080")
+      .set("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092");
 
     webClient = WebClient.create(vertx, new WebClientOptions()
       .setDefaultHost("localhost")

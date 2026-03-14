@@ -20,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(VertxExtension.class)
 @WireMockTest
-@DisplayName("EmbeddingVerticle Integration Tests")
 class EmbeddingVerticleTest {
 
   private static final String EMBEDDINGS_ADDRESS = "embeddings.get";

@@ -121,7 +121,7 @@ public final class ApiVerticle extends VerticleBase {
   private void createDocument(RoutingContext ctx) {
     validatePayload(ctx, documentValidator)
       .compose(payload -> uuidPathParam(ctx, "clientId")
-        .map(clientId -> payload.put("client_id", clientId.toString())))
+        .map(clientId -> payload.put("clientId", clientId.toString())))
       .compose(payload ->
         vertx.eventBus().<JsonObject>request("documents.create", payload))
       .onSuccess(reply ->

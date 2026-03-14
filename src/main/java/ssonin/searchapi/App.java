@@ -8,6 +8,7 @@ import io.vertx.pgclient.PgConnectOptions;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
 import ssonin.searchapi.api.ApiVerticle;
+import ssonin.searchapi.embedding.EmbeddingIngesterVerticle;
 import ssonin.searchapi.embedding.EmbeddingVerticle;
 import ssonin.searchapi.repository.RepositoryVerticle;
 
@@ -28,7 +29,9 @@ public final class App extends VerticleBase {
       .put("services", new JsonObject()
         .put("embedding", new JsonObject()
           .put("host", System.getenv("EMBEDDING_SERVICE_HOST"))
-          .put("port", Integer.parseInt(System.getenv("EMBEDDING_SERVICE_PORT")))));
+          .put("port", Integer.parseInt(System.getenv("EMBEDDING_SERVICE_PORT"))))
+        .put("kafka", new JsonObject()
+          .put("bootstrap.servers", System.getenv("KAFKA_BOOTSTRAP_SERVERS"))));
   }
 
   @Override
@@ -40,7 +43,8 @@ public final class App extends VerticleBase {
           return Future.all(
             vertx.deployVerticle(new ApiVerticle(), options),
             vertx.deployVerticle(new RepositoryVerticle(), options),
-            vertx.deployVerticle(new EmbeddingVerticle(), options));
+            vertx.deployVerticle(new EmbeddingVerticle(), options),
+            vertx.deployVerticle(new EmbeddingIngesterVerticle(), options));
         }
       );
   }

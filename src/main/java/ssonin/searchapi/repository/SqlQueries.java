@@ -40,7 +40,7 @@ interface SqlQueries {
   }
 
   static String updateDocumentEmbedding() {
-    return "UPDATE documents SET embedding = $1::vector WHERE id = $2::uuid";
+    return "UPDATE documents SET updated_at = now(), embedding = $2::vector WHERE id = $1::uuid";
   }
 
   static String searchClients() {
