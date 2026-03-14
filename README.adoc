@@ -6,6 +6,8 @@ image:https://img.shields.io/badge/vert.x-5.0.6-purple.svg[link="https://vertx.i
 image:https://img.shields.io/badge/java-21-blue.svg[link="https://openjdk.org/"]
 image:https://img.shields.io/badge/python-3.11-blue.svg[link="https://www.python.org/"]
 image:https://img.shields.io/badge/postgresql-16-blue.svg[link="https://www.postgresql.org/"]
+image:https://img.shields.io/badge/kafka-latest-black.svg[link="https://kafka.apache.org/"]
+image:https://img.shields.io/badge/debezium-2.7-orange.svg[link="https://debezium.io/"]
 
 A REST API for managing clients and documents with advanced hybrid search capabilities powered by PostgreSQL full-text search and vector similarity.
 
@@ -31,6 +33,7 @@ This application provides a searchable repository of clients and their associate
 * *Framework*: Vert.x 5.0.6 (Web, Native PostgreSQL Client)
 * *Database*: PostgreSQL 16 with full-text search and pgvector extension
 * *Embeddings*: Python 3.11 microservice with sentence-transformers (all-MiniLM-L6-v2)
+* *Messaging*: Apache Kafka (KRaft mode) with Debezium 2.7 CDC connector
 * *Migrations*: Flyway 11.7.2
 * *Build*: Gradle 8.11 with Shadow plugin
 * *Containerisation*: Docker with multi-stage builds
@@ -75,6 +78,7 @@ docker compose up --build
 This will:
 
 * Build and start PostgreSQL 16 with pgvector extension
+* Start Kafka (KRaft mode) and Debezium CDC connector (captures WAL changes)
 * Build and start the embedding service (downloads the ML model on first run)
 * Apply database migrations automatically via Flyway
 * Build and start the application on port 8888
@@ -147,6 +151,10 @@ Environment variables (with defaults):
 |`EMBEDDING_SERVICE_PORT`
 |`8000`
 |Embedding service port
+
+|`KAFKA_BOOTSTRAP_SERVERS`
+|`kafka:9092`
+|Kafka broker address (used by app and embedding service)
 |===
 
 Override in `docker-compose.yml` or create a `.env` file.
@@ -167,7 +175,7 @@ Content-Type: application/json
 {
   "first_name": "Chandler",
   "last_name": "Bing",
-  "email": "chandler.bing@neviswealth.com",
+  "email": "chandler.bing@centralperk.com",
   "description": "Sarcastic, self-deprecating office worker with a sharp sense of humor, known for cracking jokes to deflect awkward situations."
 }
 ----
@@ -180,7 +188,7 @@ Content-Type: application/json
   "created_at": "2024-12-22T10:30:00Z",
   "first_name": "Chandler",
   "last_name": "Bing",
-  "email": "chandler.bing@neviswealth.com",
+  "email": "chandler.bing@centralperk.com",
   "description": "Sarcastic, self-deprecating office worker with a sharp sense of humor, known for cracking jokes to deflect awkward situations."
 }
 ----
@@ -236,7 +244,7 @@ GET /api/v1/search?q={query}
     "created_at": "2024-12-22T10:30:00Z",
     "first_name": "Chandler",
     "last_name": "Bing",
-    "email": "chandler.bing@neviswealth.com",
+    "email": "chandler.bing@centralperk.com",
     "description": "Sarcastic, self-deprecating office worker...",
     "rank": 0.607927
   },
@@ -314,10 +322,10 @@ Search for clients by company:
 
 [source,bash]
 ----
-curl "http://localhost:8888/api/v1/search?q=NevisWealth"
+curl "http://localhost:8888/api/v1/search?q=CentralPerk"
 ----
 
-Returns Chandler's client record by matching the email domain (`chandler.bing@neviswealth.com`). The email field is tokenised by splitting on special characters (`@`, `.`, `_`, `+`, `-`).
+Returns Chandler's client record by matching the email domain (`chandler.bing@centralperk.com`). The email field is tokenised by splitting on special characters (`@`, `.`, `_`, `+`, `-`).
 
 === Complete Workflow Example
 
@@ -329,7 +337,7 @@ CLIENT_ID=$(curl -s -X POST http://localhost:8888/api/v1/clients \
   -d '{
     "first_name": "Chandler",
     "last_name": "Bing",
-    "email": "chandler.bing@neviswealth.com",
+    "email": "chandler.bing@centralperk.com",
     "description": "Sarcastic, self-deprecating office worker with a sharp sense of humor, known for cracking jokes to deflect awkward situations."
   }' | jq -r '.id')
 
@@ -444,7 +452,28 @@ def get_embeddings(request: EmbeddingRequest):
     return EmbeddingResponse(embeddings=embeddings.tolist())
 ----
 
-==== Embedding Storage
+==== Async Embedding Pipeline
+
+Document embeddings are computed asynchronously after creation via a CDC-driven pipeline:
+
+----
+POST /documents
+  -> RepositoryVerticle: INSERT + pg_logical_emit_message (transactional)
+  -> PostgreSQL WAL
+  -> Debezium -> Kafka: searchapi.message
+  -> Python embedding service: fetch content -> compute vector -> publish
+  -> Kafka: searchapi.document.embedding
+  -> EmbeddingIngesterVerticle -> event bus: documents.embedding.update
+  -> RepositoryVerticle: UPDATE documents SET embedding = ?
+----
+
+. *Document creation*: `RepositoryVerticle` inserts the document and emits a WAL logical message transactionally via `pg_logical_emit_message(true, 'document.created', doc_id)`
+. *CDC capture*: Debezium reads the logical message from the PostgreSQL replication slot and publishes it to the `searchapi.message` Kafka topic
+. *Embedding computation*: The Python embedding service (Kafka consumer) reads the message, fetches document content from PostgreSQL, computes the 384-dim vector using all-MiniLM-L6-v2, and publishes the result to the `searchapi.document.embedding` topic
+. *Ingestion*: `EmbeddingIngesterVerticle` (Kafka consumer in the Java app) reads the embedding and forwards it to `RepositoryVerticle` via event bus address `documents.embedding.update`
+. *Storage*: `RepositoryVerticle` executes `UPDATE documents SET embedding = ?`
+
+Documents are immediately searchable via FTS after creation. Vector search results become available once the async pipeline completes (typically within seconds).
 
 Document embeddings are stored in PostgreSQL using pgvector:
 
@@ -452,8 +481,6 @@ Document embeddings are stored in PostgreSQL using pgvector:
 ----
 embedding vector(384)
 ----
-
-Embeddings are generated when documents are created and stored alongside the document content.
 
 ==== HNSW Index
 
@@ -498,7 +525,7 @@ Email addresses are tokenised by replacing special characters with spaces:
 regexp_replace(email, '[@._+\-]+', ' ', 'g')
 ----
 
-This allows searching by domain (e.g., "NevisWealth") or username components.
+This allows searching by domain (e.g., "CentralPerk") or username components.
 
 ==== GIN Indexes
 
@@ -568,6 +595,7 @@ The application follows Vert.x best practices with a verticle-based architecture
 * *ApiVerticle*: HTTP layer handling routing, request/response formatting, and error handling
 * *RepositoryVerticle*: Data access layer managing PostgreSQL interactions
 * *EmbeddingVerticle*: Communicates with the embedding service via HTTP
+* *EmbeddingIngesterVerticle*: Kafka consumer that reads computed embeddings from the `searchapi.document.embedding` topic and forwards them to `RepositoryVerticle` via the event bus
 
 ==== Event Bus Communication
 
@@ -627,6 +655,7 @@ See migrations in link:src/main/resources/db/migration/[src/main/resources/db/mi
 
 * link:src/main/resources/db/migration/V001__create_clients_table.sql[V001]: Clients table with search vectors
 * link:src/main/resources/db/migration/V002__create_documents_table.sql[V002]: Documents table with search vectors, embeddings, and HNSW index
+* link:src/main/resources/db/migration/V003__create_debezium_publication.sql[V003]: Debezium publication (`dbz_publication`) for logical replication
 
 == Development
 
@@ -636,7 +665,7 @@ See migrations in link:src/main/resources/db/migration/[src/main/resources/db/mi
 +
 [source,bash]
 ----
-docker compose up --build postgres embedding
+docker compose up --build postgres kafka debezium embedding
 ----
 
 2. Package the application:
@@ -758,6 +787,28 @@ curl -X POST http://localhost:8000/embeddings \
 
 The response should contain a 384-dimensional embedding array.
 
+=== Embeddings not updating (CDC pipeline)
+
+Check Debezium connector status:
+[source,bash]
+----
+curl http://localhost:8083/connectors/searchapi-connector/status
+----
+
+Check Kafka topics via Kafka UI at http://localhost:8080 - look for messages in `searchapi.message` and `searchapi.document.embedding`.
+
+Verify the replication slot exists in PostgreSQL:
+[source,bash]
+----
+docker exec -it search-api-postgres psql -U search_api -d search_api -c "SELECT slot_name, active FROM pg_replication_slots;"
+----
+
+Check `EmbeddingIngesterVerticle` in app logs:
+[source,bash]
+----
+docker compose logs app | grep -i ingester
+----
+
 === Database migration issues
 
 Reset the database:
@@ -777,3 +828,5 @@ docker compose up --build
 * link:https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2[all-MiniLM-L6-v2 Model]
 * link:https://swagger.io/specification/[OpenAPI Specification]
 * link:https://flywaydb.org/documentation/[Flyway Documentation]
+* link:https://debezium.io/documentation/reference/2.7/[Debezium Documentation]
+* link:https://kafka.apache.org/documentation/[Apache Kafka Documentation]
