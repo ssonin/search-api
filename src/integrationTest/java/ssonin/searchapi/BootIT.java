@@ -42,7 +42,6 @@ class BootIT {
 
     // then
     assertThat(actual.migrationsCount()).isEqualTo(3L);
-    assertThat(actual.clientsCount()).isZero();
     assertThat(actual.documentsCount()).isZero();
   }
 

@@ -16,11 +16,14 @@ val assertjVersion: String by project
 
 dependencies {
   implementation(enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}"))
+  implementation("io.quarkiverse.httpproblem:quarkus-http-problem")
   implementation("io.quarkus:quarkus-arc")
   implementation("io.quarkus:quarkus-flyway")
+  implementation("io.quarkus:quarkus-hibernate-validator")
   implementation("io.quarkus:quarkus-jdbc-postgresql")
   implementation("io.quarkus:quarkus-reactive-pg-client")
   implementation("io.quarkus:quarkus-rest")
+  implementation("io.quarkus:quarkus-rest-jackson")
 
   integrationTestImplementation("io.rest-assured:rest-assured")
   integrationTestImplementation("org.testcontainers:testcontainers-postgresql")
