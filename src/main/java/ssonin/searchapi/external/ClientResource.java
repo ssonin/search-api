@@ -4,18 +4,23 @@ import io.smallrye.mutiny.Uni;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.UriInfo;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.RestResponse.ResponseBuilder;
 import ssonin.searchapi.domain.ClientDetails;
+import ssonin.searchapi.domain.error.InvalidClientIdError;
 import ssonin.searchapi.external.request.ClientCreateRequest;
 import ssonin.searchapi.external.response.ClientResponse;
 import ssonin.searchapi.service.ClientInput;
 import ssonin.searchapi.service.ClientService;
+
+import java.util.UUID;
 
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.Response.Status.CREATED;
@@ -40,6 +45,20 @@ public class ClientResource {
       .map(client -> ResponseBuilder.create(CREATED, client)
         .location(pathBuilder.path(client.id().toString()).build())
         .build());
+  }
+
+  @GET
+  @Path("/{clientId}")
+  @Produces(APPLICATION_JSON)
+  public Uni<RestResponse<ClientResponse>> get(@PathParam("clientId") String clientId) {
+    return Uni.createFrom()
+      .item(clientId)
+      .map(UUID::fromString)
+      .onFailure(IllegalArgumentException.class)
+      .transform(InvalidClientIdError::new)
+      .flatMap(clientService::get)
+      .map(ClientResource::toClientResponse)
+      .map(client -> ResponseBuilder.ok(client).build());
   }
 
   private static ClientInput toClientInput(ClientCreateRequest request) {

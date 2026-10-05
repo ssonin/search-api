@@ -8,6 +8,7 @@ import io.vertx.pgclient.PgException;
 import jakarta.enterprise.context.ApplicationScoped;
 import ssonin.searchapi.domain.ClientDetails;
 import ssonin.searchapi.domain.GenericState;
+import ssonin.searchapi.domain.error.ClientNotFoundError;
 import ssonin.searchapi.domain.error.EmailAlreadyInUseError;
 import ssonin.searchapi.service.ClientInput;
 
@@ -36,6 +37,22 @@ public final class ClientRepository {
       .map(ClientRepository::fromRow)
       .onFailure()
       .transform(ClientRepository::handleFailure);
+  }
+
+  public Uni<ClientDetails> get(UUID id) {
+    return pool.preparedQuery("""
+        SELECT id, created_at, updated_at, state, first_name, last_name, email, description
+        FROM clients
+        WHERE id = $1;
+        """)
+      .execute(Tuple.of(id))
+      .map(rows -> {
+        final var iterator = rows.iterator();
+        if (iterator.hasNext()) {
+          return ClientRepository.fromRow(iterator.next());
+        }
+        throw new ClientNotFoundError();
+      });
   }
 
   private static Throwable handleFailure(Throwable t) {

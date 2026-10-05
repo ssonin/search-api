@@ -13,6 +13,10 @@ A REST API for managing clients and documents with advanced hybrid search capabi
 
 toc::[]
 
+== Quarkus migration status
+
+This README primarily describes the original Vert.x application and its intended API. The Quarkus migration currently implements client creation and retrieval. `POST /api/v1/clients` returns 201 for a valid client, 400 for an invalid request and 409 for a duplicate active email. `GET /api/v1/clients/{id}` returns 200 for an existing client, 400 for an unparseable UUID and 404 for an unknown UUID. Successful responses use `application/json`; these errors use RFC 9457 Problem Details with `application/problem+json`. The remaining document and search examples below describe the legacy baseline until their migration tasks are completed.
+
 == Overview
 
 This application provides a searchable repository of clients and their associated documents. The search functionality combines PostgreSQL's full-text search with semantic vector search using pgvector, enabling both keyword matching and conceptual similarity searches.
@@ -201,6 +205,8 @@ GET /api/v1/clients/{id}
 ----
 
 *Response*: `200 OK` (same schema as create response)
+
+An unparseable `id` returns `400 Bad Request`; a parseable UUID with no client returns `404 Not Found`. Both responses use `application/problem+json` with `status`, `title` and `detail` fields.
 
 ==== Create Document
 
