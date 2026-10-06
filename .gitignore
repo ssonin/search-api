@@ -1,6 +1,9 @@
 ### Vert.x ###
 .vertx/
 
+### Quarkus
+/.quarkus/cli/
+
 ### Eclipse ###
 
 .metadata

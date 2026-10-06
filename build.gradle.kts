@@ -24,6 +24,7 @@ dependencies {
   implementation("io.quarkus:quarkus-reactive-pg-client")
   implementation("io.quarkus:quarkus-rest")
   implementation("io.quarkus:quarkus-rest-jackson")
+  implementation("io.quarkus:quarkus-smallrye-openapi")
 
   integrationTestImplementation("io.rest-assured:rest-assured")
   integrationTestImplementation("org.testcontainers:testcontainers-postgresql")

@@ -15,7 +15,29 @@ toc::[]
 
 == Quarkus migration status
 
-This README primarily describes the original Vert.x application and its intended API. The Quarkus migration currently implements client creation and retrieval. `POST /api/v1/clients` returns 201 for a valid client, 400 for an invalid request and 409 for a duplicate active email. `GET /api/v1/clients/{id}` returns 200 for an existing client, 400 for an unparseable UUID and 404 for an unknown UUID. Successful responses use `application/json`; these errors use RFC 9457 Problem Details with `application/problem+json`. The remaining document and search examples below describe the legacy baseline until their migration tasks are completed.
+This README primarily describes the original Vert.x application and its intended API. The Quarkus migration currently implements client creation and retrieval using Java 25, Gradle 9.7.0 and Quarkus 3.38.1. `POST /api/v1/clients` returns 201 for a valid client, 400 for an invalid request and 409 for a case-insensitive duplicate active email. `GET /api/v1/clients/{clientId}` returns 200 for an existing client, 400 for an unparseable UUID and 404 for a parseable UUID with no matching client. Canonical UUID spelling is not required. Successful responses use `application/json`; these errors use RFC 9457 Problem Details with `application/problem+json`. The remaining document and search examples, architecture descriptions and full-stack build instructions below describe the legacy baseline until their migration tasks are completed.
+
+=== Developing the current client slice
+
+Run PostgreSQL through Compose and the application in development mode:
+
+[source,bash]
+----
+docker compose up -d --wait postgres
+./gradlew quarkusDev
+----
+
+The development profile defaults to PostgreSQL at `localhost:5432`, with database, username and password `search_api`. Override these through `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER` and `PGPASSWORD` as needed. A normal production-profile launch requires these values to be supplied, except for `PGPORT`, which defaults to 5432. Kafka, Debezium and the embedding service are not required for the client slice. The existing application Dockerfile still builds the legacy Vert.x fat JAR; packaging the Quarkus application for Compose remains a later migration task.
+
+=== Testing the current client slice
+
+[source,bash]
+----
+./gradlew test
+./gradlew quarkusIntTest
+----
+
+`test` runs plain JUnit unit tests from `src/test/java` without starting Quarkus or Docker. `quarkusIntTest` runs `@QuarkusIntegrationTest` scenarios from `src/integrationTest/java` against the packaged fast-jar application, using PostgreSQL Testcontainers and requiring Docker. The packaged tests use the production profile, with datasource configuration supplied by the test resource. `./gradlew check` includes both test levels.
 
 == Overview
 
@@ -165,7 +187,17 @@ Override in `docker-compose.yml` or create a `.env` file.
 
 == API Documentation
 
-Full OpenAPI 3.1 specification available in link:src/main/resources/openapi.yml[openapi.yml].
+The authoritative contract for the implemented Quarkus endpoints is the generated OpenAPI 3.1 document. SmallRye OpenAPI derives it from the resource and DTO annotations; `ProblemSchemaFilter` corrects the extension-provided Problem Details URI-reference formats at build time. There is no separately maintained static OpenAPI document.
+
+With the application running on its default port:
+
+* link:http://localhost:8888/q/openapi?format=json[OpenAPI JSON]
+* link:http://localhost:8888/q/openapi[OpenAPI YAML]
+* link:http://localhost:8888/q/swagger-ui[Swagger UI], available in development mode
+
+The served document currently covers client creation and retrieval. Document creation and search examples below remain legacy reference. Optional build exports of the generated document belong under `build/` and must not be maintained or loaded as a second contract source.
+
+Client payloads use snake_case. Required names and email must be non-blank, email is validated, and unknown request properties are accepted. An absent optional description is omitted from responses; explicit null string values are rejected. Problem Details members vary by failure: `type` may be omitted, implying `about:blank`, and `detail`, `instance` and validation extensions are not required on every error. The HTTP status classifies the error; human-readable titles and details are not application error codes.
 
 === Endpoints
 
@@ -185,6 +217,9 @@ Content-Type: application/json
 ----
 
 *Response*: `201 Created`
+
+The response uses `application/json` and includes a `Location` URI resolving to the created client resource. Malformed or invalid requests return 400, and an email already used by an active client, compared case-insensitively, returns 409. Both errors use `application/problem+json`.
+
 [source,json]
 ----
 {
@@ -201,12 +236,12 @@ Content-Type: application/json
 
 [source,bash]
 ----
-GET /api/v1/clients/{id}
+GET /api/v1/clients/{clientId}
 ----
 
 *Response*: `200 OK` (same schema as create response)
 
-An unparseable `id` returns `400 Bad Request`; a parseable UUID with no client returns `404 Not Found`. Both responses use `application/problem+json` with `status`, `title` and `detail` fields.
+An unparseable `clientId` returns `400 Bad Request`; a parseable UUID with no client returns `404 Not Found`. Canonical textual UUID spelling is not required. Both responses use `application/problem+json` with `status`, `title` and `detail` fields.
 
 ==== Create Document
 

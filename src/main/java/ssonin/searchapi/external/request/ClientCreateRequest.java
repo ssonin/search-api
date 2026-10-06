@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 import java.util.Optional;
 
@@ -13,6 +14,7 @@ import static com.fasterxml.jackson.annotation.Nulls.FAIL;
 import static com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 
 @JsonDeserialize(builder = ClientCreateRequest.Builder.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public record ClientCreateRequest(
 
   @NotBlank
@@ -23,8 +25,10 @@ public record ClientCreateRequest(
 
   @NotBlank
   @Email
+  @Schema(format = "email")
   String email,
 
+  @Schema(nullable = false)
   Optional<String> description
 ) {
 

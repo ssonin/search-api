@@ -2,15 +2,34 @@
 
 ## Purpose
 
-`search-api` is a Vert.x 5 application for managing clients and documents and searching them through a hybrid of:
+This checkout migrates `search-api` from Vert.x to Quarkus. The implemented Quarkus slice currently creates and retrieves clients. The legacy application manages clients and documents and searches them through a hybrid of:
 
 - PostgreSQL full-text search
 - pgvector cosine similarity search
 - Reciprocal Rank Fusion (RRF) for document ranking
 
-The system also includes an asynchronous embedding pipeline driven by PostgreSQL logical messages, Debezium, Kafka, and a Python embedding service.
+The legacy system also includes an asynchronous embedding pipeline driven by PostgreSQL logical messages, Debezium, Kafka and a Python embedding service. The document and search endpoints and this pipeline are not yet implemented in the Quarkus application.
 
-## Stack
+## Current Quarkus Guidance
+
+This section governs the current checkout. The Vert.x stack, layout, architecture, operational flow, build commands and test inventory below are legacy reference, not instructions to recreate those boundaries in the Quarkus client slice.
+
+- Use Java 25, Gradle 9.7.0 and Quarkus 3.38.1 with JVM fast-jar packaging.
+- Keep HTTP handling and request validation in `external/ClientResource`, typed application operations in `service/ClientService`, and reactive database access in `repository/ClientRepository`.
+- Keep transport DTOs in `external/request` and `external/response`; map application errors through `external/ApiExceptionMappers`.
+- Configure datasources in `src/main/resources/application.properties`; Flyway runs migrations at startup.
+- For local client development, run `docker compose up -d --wait postgres`, then `./gradlew quarkusDev`. The client slice does not require Kafka, Debezium or the embedding service. The legacy Dockerfile does not yet package Quarkus.
+- Run plain JUnit unit tests in `src/test/java` with `./gradlew test`. Do not start Quarkus or Docker in that suite; mock injectable dependencies when testing application classes.
+- Run black-box packaged application tests in `src/integrationTest/java` with `./gradlew quarkusIntTest` and `@QuarkusIntegrationTest`. These tests use PostgreSQL Testcontainers; `./gradlew check` includes both suites. Do not introduce `@QuarkusTest` as the default HTTP contract boundary.
+- Client creation returns 201/400/409; retrieval returns 200/400/404. Preserve snake_case payloads, `application/json` success bodies, `application/problem+json` errors and the creation `Location` header.
+- Preserve 400 for unparseable client identifiers and 404 for parseable identifiers with no matching client. Canonical UUID spelling is not required. Duplicate active emails are compared case-insensitively.
+- Required names and email are non-blank; validate email, accept unknown request properties, reject explicit null string values and omit absent optional descriptions from responses.
+- The authoritative OpenAPI 3.1 contract is generated from resource and DTO annotations and served at `/q/openapi` (`?format=json` for JSON). Swagger UI is available at `/q/swagger-ui` in development mode.
+- Reuse the extension's Problem Details schemas. `ProblemSchemaFilter` adjusts their `type` and `instance` formats to `uri-reference` at build time. Do not require `type`, `detail`, `instance` or validation extensions on every error; omitted `type` implies `about:blank`.
+- Do not reintroduce a separately maintained `openapi.yml` or overlapping static endpoint schemas. Generated exports belong under `build/` and are outputs, not contract inputs.
+- For QKM-012, verify the generated contract manually through `/q/openapi` and Swagger UI, and run the existing unit and packaged endpoint behaviour tests. Automated tests of the generated OpenAPI document are excluded from this task; do not add annotation tests or generated-document snapshots.
+
+## Legacy Stack
 
 - Java 21
 - Gradle 8
@@ -21,7 +40,7 @@ The system also includes an asynchronous embedding pipeline driven by PostgreSQL
 - Python 3.11 FastAPI embedding service with `sentence-transformers`
 - JUnit 5, Testcontainers, WireMock, AssertJ
 
-## Repo Layout
+## Legacy Repo Layout
 
 ```text
 src/main/java/ssonin/searchapi/
@@ -40,7 +59,7 @@ services/debezium/                 Debezium connector config
 services/postgres/                 Postgres init SQL
 ```
 
-## Architecture Rules
+## Legacy Architecture Reference
 
 - Preserve the event-bus split. HTTP stays in `ApiVerticle`, database logic stays in `RepositoryVerticle`, embedding HTTP calls stay in `EmbeddingVerticle`, Kafka ingestion stays in `EmbeddingIngesterVerticle`.
 - Keep SQL in [`SqlQueries.java`](/Users/sergei.sonin/github/search-api/src/main/java/ssonin/searchapi/repository/SqlQueries.java). Do not scatter SQL strings through handlers unless there is a strong reason.
@@ -48,7 +67,7 @@ services/postgres/                 Postgres init SQL
 - Query embeddings for `/api/v1/search` are fetched in the API layer before dispatching the search request to the repository layer.
 - Document creation is intentionally asynchronous with respect to vector search. FTS should work immediately after insert; vector results appear once the Kafka pipeline updates `documents.embedding`.
 
-## Operational Flow
+## Legacy Operational Flow
 
 Document embedding pipeline:
 
@@ -59,7 +78,7 @@ Document embedding pipeline:
 5. `EmbeddingIngesterVerticle` consumes that topic and sends `documents.embedding.update` on the event bus
 6. `RepositoryVerticle` updates `documents.embedding`
 
-## Build And Run
+## Legacy Build And Run
 
 Common commands:
 
@@ -93,7 +112,7 @@ Important environment variables:
 - `EMBEDDING_SERVICE_PORT`
 - `KAFKA_BOOTSTRAP_SERVERS`
 
-## Testing Guidance
+## Legacy Testing Reference
 
 - `EmbeddingVerticleTest` is isolated and does not require Docker.
 - `AppTest`, `ApiVerticleTest`, `RepositoryVerticleTest`, and `EmbeddingIngesterVerticleTest` rely on Testcontainers and therefore require a working Docker environment.
@@ -115,10 +134,10 @@ Important environment variables:
   - `services/embedding-service/main.py`
   - `EmbeddingIngesterVerticle`
   - corresponding tests
-- If you add new API endpoints, keep request validation in `ApiVerticle` and document them in `README.adoc` and `src/main/resources/openapi.yml`.
+- If you add Quarkus API endpoints, keep request validation in the resource layer, maintain OpenAPI annotations on resources and DTOs, and document verified behaviour in `README.adoc`.
 - If you change schema, prefer a new Flyway migration instead of editing existing migrations.
 
-## Current Caveats
+## Legacy Caveats
 
 - The `state` columns exist on `clients` and `documents`, but repository queries do not currently filter by `state`. Do not describe soft delete behavior as implemented unless you add the query constraints too.
 - There is no synonym or thesaurus layer in the SQL or application code. Do not assume semantic matching comes from PostgreSQL thesaurus dictionaries; current semantic behavior comes from vector search only.
@@ -127,5 +146,5 @@ Important environment variables:
 
 ## When Updating Docs
 
-- Keep [`README.adoc`](/Users/sergei.sonin/github/search-api/README.adoc), [`CLAUDE.md`](/Users/sergei.sonin/github/search-api/CLAUDE.md), and this file aligned with the actual implementation.
-- Prefer documenting verified behavior over intended behavior.
+- Keep [`README.adoc`](/Users/sergei.sonin/github/search-api-quarkus/README.adoc) and this file aligned with the implemented Quarkus slice and its generated contract. `CLAUDE.md` still describes the legacy baseline pending the broader documentation migration.
+- Prefer documenting verified behaviour over intended behaviour, and label unmigrated document, search and pipeline descriptions as legacy reference.

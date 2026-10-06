@@ -1,7 +1,6 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: search-api-postgres
     restart: unless-stopped
 
     # wal_level=logical is required for pg_logical_emit_message() to be captured
